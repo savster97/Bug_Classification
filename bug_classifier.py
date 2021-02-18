@@ -147,6 +147,3 @@ tfidf_svmlinear_classifier(x_train, y_train, x_test, y_test, bug_types, STOP_WOR
 ## TF-IDF and Random Forest
 print("TF-IDF + Random Forest")
 tfidf_randomforest_classifier(x_train, y_train, x_test, y_test, bug_types, STOP_WORDS)
-
-
-
