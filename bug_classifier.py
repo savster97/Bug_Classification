@@ -17,7 +17,7 @@ from nltk.corpus import stopwords
 
 
 def grid_search(x_train, y_train, x_test, y_test, bug_types, parameters, pipeline):
-    grid_search_tune = GridSearchCV(pipeline, parameters, cv=2, n_jobs=3, verbose=10)
+    grid_search_tune = GridSearchCV(pipeline, parameters, cv=5, n_jobs=3, verbose=10)
     grid_search_tune.fit(x_train, y_train)
 
     print()
@@ -130,7 +130,7 @@ data_x = np.array(data_df["Summary"].dropna())
 data_y = np.array(data_df["Classification"].dropna())
 
 # split the data, leave 1/3 out for testing
-x_train, x_test, y_train, y_test = train_test_split(data_x, data_y, test_size=1/3, random_state=85)
+x_train, x_test, y_train, y_test = train_test_split(data_x, data_y, test_size=0.2, random_state=85)
 
 ## TF-IDF and Naive Bayes
 print("TF-IDF + Naive Bayes")
