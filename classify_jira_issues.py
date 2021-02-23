@@ -38,7 +38,7 @@ def grid_search(df, x_train, y_train, x_predict, parameters, pipeline, fileName)
     results_df.to_csv(fileName)
 
 def tfidf_naivebayes_classifier(df, x_train, y_train, x_predict, stop_words):
-    fileName = "../TF-IDF_NaiveBayes_Classifier.csv"
+    fileName = "../Classified_Jira_Issues/TF-IDF_NaiveBayes_Classifier.csv"
     pipeline_nb = Pipeline([
         ('tfidf', TfidfVectorizer(stop_words=stop_words)),
         ('clf', OneVsRestClassifier(MultinomialNB(fit_prior=True, class_prior=None))),
@@ -52,7 +52,7 @@ def tfidf_naivebayes_classifier(df, x_train, y_train, x_predict, stop_words):
 
 
 def tfidf_logreg_classifier(df, x_train, y_train, x_predict, stop_words):
-    fileName = "../TF-IDF_LogReg_Classifier.csv"
+    fileName = "../Classified_Jira_Issues/TF-IDF_LogReg_Classifier.csv"
     pipeline_logreg = Pipeline([
         ('tfidf', TfidfVectorizer(stop_words=stop_words)),
         ('clf', OneVsRestClassifier(LogisticRegression(solver='sag'), n_jobs=1)),
@@ -67,7 +67,7 @@ def tfidf_logreg_classifier(df, x_train, y_train, x_predict, stop_words):
 
 
 def tfidf_svmlinear_classifier(df, x_train, y_train, x_predict, stop_words):
-    fileName = "../TF-IDF_SVMLinear_Classifier.csv"
+    fileName = "../Classified_Jira_Issues/TF-IDF_SVMLinear_Classifier.csv"
     pipeline_svmlin = Pipeline([
         ('tfidf', TfidfVectorizer(stop_words=stop_words)),
         ('clf', OneVsRestClassifier(LinearSVC(), n_jobs=1))])
@@ -81,7 +81,7 @@ def tfidf_svmlinear_classifier(df, x_train, y_train, x_predict, stop_words):
 
 
 def tfidf_randomforest_classifier(df, x_train, y_train, x_predict, stop_words):
-    fileName = "../TF-IDF_RF_Classifier.csv"
+    fileName = "../Classified_Jira_Issues/TF-IDF_RF_Classifier.csv"
     pipeline_rf = Pipeline([
         ('tfidf', TfidfVectorizer(stop_words=stop_words)),
         ('clf', OneVsRestClassifier(RandomForestClassifier()))])
