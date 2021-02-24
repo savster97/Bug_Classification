@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import nltk
+import pickle
 
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -13,8 +14,15 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
 
+from nltk import sent_tokenize
+from nltk import pos_tag
+from nltk import map_tag
+from nltk import word_tokenize
 from nltk.corpus import stopwords
-
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('universal_tagset')
 
 def grid_search(x_train, y_train, x_test, y_test, bug_types, parameters, pipeline):
     grid_search_tune = GridSearchCV(pipeline, parameters, cv=5, n_jobs=3, verbose=10)
@@ -85,16 +93,61 @@ def tfidf_randomforest_classifier(x_train, y_train, x_test, y_test, bug_types, s
     grid_search(x_train, y_train, x_test, y_test, bug_types, parameters_rf, pipeline_rf)
 
 
+def tag_pos(x):
+    sentences = sent_tokenize(x)
+    sents = []
+    for s in sentences:
+        text = word_tokenize(s)
+        pos_tagged = pos_tag(text)
+        simplified_tags = [
+            (word, map_tag('en-ptb', 'universal', tag)) for word, tag in pos_tagged]
+        sents.append(simplified_tags)
+    return sents
+
+
+def post_tag_documents(df):
+    x_data = []
+    y_data = []
+    total = len(df["Classification"])
+    summaries = df["Summary"]
+    print(len(summaries))
+    types = df["Classification"]
+    print(len(types))
+    for i in range(1, len(summaries)):
+        print(summaries[i])
+        sents = tag_pos(summaries[i])
+        print(sents)
+        x_data.append(sents)
+        y_data.append(types[i])
+        print(types[i])
+        i += 1
+        if i % 5000 == 0:
+            print(i, "/", total)
+
+    # export Part-of-Speech tagging file
+    with open('../pos_tagged_data.dat', 'wb') as f:
+        pickle.dump((x_data, y_data), f)
+
+    return x_data, y_data
+
+
+def pos_tag_data(df):
+    print("Converting data to Part-of-Speech tagging...")
+    x_data, y_data = post_tag_documents(df)
+
+    return x_data, y_data
+
+
+
 # Load NLTK's English stop-words list
 # Global Variables
-nltk.download('stopwords')
 STOP_WORDS = set(stopwords.words('english'))
 print(STOP_WORDS)
 
 # load pre-processed data
 print("Loading already processed training data")
 # Columns: ['Bug-ID ', 'Project ', 'Classification', 'Summary', 'Link']
-data_df = pd.read_excel("../Bug_Report.xlsx")
+data_df = pd.read_excel("../Bug_Report.xlsx").dropna()
 # Number of classes
 class_groups = data_df.groupby(["Classification"])
 print(len(class_groups))
@@ -147,3 +200,8 @@ tfidf_svmlinear_classifier(x_train, y_train, x_test, y_test, bug_types, STOP_WOR
 ## TF-IDF and Random Forest
 print("TF-IDF + Random Forest")
 tfidf_randomforest_classifier(x_train, y_train, x_test, y_test, bug_types, STOP_WORDS)
+
+## Pre-processing data with Part-of-Speech tagging
+x_data_postag, y_data_postag = pos_tag_data(data_df)
+
+## Word2Vec and Naive Bayes
