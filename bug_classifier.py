@@ -13,6 +13,9 @@ from sklearn.metrics import classification_report
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import StratifiedShuffleSplit
+
+from gensim.models import KeyedVectors
 
 from nltk import sent_tokenize
 from nltk import pos_tag
@@ -138,6 +141,121 @@ def pos_tag_data(df):
     return x_data, y_data
 
 
+def word2vec(x_data, pos_filter):
+    print("Loading GoogleNews-vectors-negative300.bin")
+    google_vecs = KeyedVectors.load_word2vec_format('../GoogleNews-vectors-negative300.bin', binary=True, limit=200000)
+
+    print("Considering only", pos_filter)
+    print("Averaging Word Embeddings...")
+    x_data_embeddings = []
+    total = len(x_data)
+    processed = 0
+    for tagged_plot in x_data:
+        count = 0
+        doc_vector = np.zeros(300)
+        for sentence in tagged_plot:
+            for tagged_word in sentence:
+                if tagged_word[1] in pos_filter:
+                    try:
+                        doc_vector += google_vecs[tagged_word[0]]
+                        count += 1
+                    except KeyError:
+                        continue
+        if count != 0: # Luca mods
+            doc_vector /= count
+        if np.isnan(np.min(doc_vector)):
+            continue
+
+        x_data_embeddings.append(doc_vector)
+
+        processed += 1
+        if processed % 10000 == 0:
+            print(processed, "/", total)
+
+    return np.array(x_data_embeddings)
+
+
+def train_and_test_w2v(x_data, y_data, bug_types, classifier_model):
+    pipeline = Pipeline([
+        ('clf', OneVsRestClassifier(MultinomialNB(fit_prior=True, class_prior=None))),
+    ])
+    parameters = {
+        'clf__estimator__alpha': (1e-2, 1e-3)
+    }
+    stratified_split = StratifiedShuffleSplit(n_splits=2, test_size=0.33)
+
+    for train_index, test_index in stratified_split.split(x_data, y_data):
+        x_train, x_test = x_data[train_index], x_data[test_index]
+        y_train, y_test = y_data[train_index], y_data[test_index]
+
+    if classifier_model == "NB":
+        pipeline = Pipeline([
+            ('clf', OneVsRestClassifier(MultinomialNB(fit_prior=True, class_prior=None))),
+        ])
+        parameters = {
+            'clf__estimator__alpha': (1e-2, 1e-3)
+        }
+
+    elif classifier_model == "SVM":
+        pipeline = Pipeline([
+            ('clf', OneVsRestClassifier(LinearSVC(), n_jobs=1))])
+        parameters = {
+            "clf__estimator__C": [0.01, 0.1, 1],
+            "clf__estimator__class_weight": ['balanced', None]}
+
+    elif classifier_model == "LG":
+        pipeline = Pipeline([
+            ('clf', OneVsRestClassifier(LogisticRegression(solver='sag'), n_jobs=1)),
+        ])
+        parameters = {
+            "clf__estimator__C": [0.01, 0.1, 1],
+            "clf__estimator__class_weight": ['balanced', None],
+        }
+
+    elif classifier_model == "RF":
+        pipeline = Pipeline([
+            ('clf', OneVsRestClassifier(RandomForestClassifier()))])
+        parameters = {
+            "clf__estimator__max_depth": [100]}
+
+    grid_search(x_train, y_train, x_test, y_test, bug_types, parameters, pipeline)
+
+
+def word2Vec_nb_classifier(x_data, y_data, bug_types):
+    pos_filter = ['NOUN', 'ADJ', 'VERB', 'NUM']
+    # get embeddings for train and test data
+    x_embeddings = word2vec(x_data, pos_filter)
+    # need to transform back into numpy array to apply StratifiedShuffleSplit
+    y_data = np.array(y_data)
+
+    train_and_test_w2v(x_embeddings, y_data, bug_types, "NB")
+
+def word2Vec_svm_classifier(x_data, y_data, bug_types):
+    pos_filter = ['NOUN', 'ADJ', 'VERB', 'NUM']
+    # get embeddings for train and test data
+    x_embeddings = word2vec(x_data, pos_filter)
+    # need to transform back into numpy array to apply StratifiedShuffleSplit
+    y_data = np.array(y_data)
+
+    train_and_test_w2v(x_embeddings, y_data, bug_types, "SVM")
+
+def word2Vec_lg_classifier(x_data, y_data, bug_types):
+    pos_filter = ['NOUN', 'ADJ', 'VERB', 'NUM']
+    # get embeddings for train and test data
+    x_embeddings = word2vec(x_data, pos_filter)
+    # need to transform back into numpy array to apply StratifiedShuffleSplit
+    y_data = np.array(y_data)
+
+    train_and_test_w2v(x_embeddings, y_data, bug_types, "LG")
+
+def word2Vec_rf_classifier(x_data, y_data, bug_types):
+    pos_filter = ['NOUN', 'ADJ', 'VERB', 'NUM']
+    # get embeddings for train and test data
+    x_embeddings = word2vec(x_data, pos_filter)
+    # need to transform back into numpy array to apply StratifiedShuffleSplit
+    y_data = np.array(y_data)
+
+    train_and_test_w2v(x_embeddings, y_data, bug_types, "RF")
 
 # Load NLTK's English stop-words list
 # Global Variables
@@ -201,7 +319,13 @@ tfidf_svmlinear_classifier(x_train, y_train, x_test, y_test, bug_types, STOP_WOR
 print("TF-IDF + Random Forest")
 tfidf_randomforest_classifier(x_train, y_train, x_test, y_test, bug_types, STOP_WORDS)
 
-## Pre-processing data with Part-of-Speech tagging
+## Pre-processing data with Part-of-Speech tagging for Word2Vec
 x_data_postag, y_data_postag = pos_tag_data(data_df)
-
-## Word2Vec and Naive Bayes
+# Word2Vec and Naive Bayes
+# word2Vec_nb_classifier(x_data_postag, y_data_postag, bug_types) ##### HELP
+# Word2Vec and SVM
+word2Vec_svm_classifier(x_data_postag, y_data_postag, bug_types)
+# Word2Vec and LG
+word2Vec_lg_classifier(x_data_postag, y_data_postag, bug_types)
+# Word2Vec and RF
+word2Vec_rf_classifier(x_data_postag, y_data_postag, bug_types)
